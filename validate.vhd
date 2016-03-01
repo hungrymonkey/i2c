@@ -12,21 +12,21 @@ entity validate is
 end validate;
 architecture lab3 of validate is begin
 	process(sdaIn,sclIn) begin
-		if( falling_edge(sdaIn)) and ( sclIn = '1') then
+		if( falling_edge(sdaIn)) and ( sclIn = '1') and ( not sclIn'EVENT) then
 			start <= '1';
 			stop <=  '0';
-		else
-			start <= '0';
-			stop <= '0';
-		end if;
-		if( rising_edge(sdaIn)) and ( sclIn = '1') then
+			sdaOut <= sdaIn;
+
+		elsif ( rising_edge(sdaIn)) and ( sclIn = '1') and ( not sclIn'EVENT) then
 			stop <= '1'; 
 			start <= '0';
-
+			sdaOut <= sdaIn;
 		else
 			stop <= '0';
 			start <= '0';
+			sdaOut <= sdaIn;
+
 		end if;
-		sdaOut <= sdaIn;
 	end process;
 end lab3;
+

@@ -56,6 +56,8 @@ ARCHITECTURE behavior OF validate_tb IS
    signal data : std_logic := '0';
    signal start_signal : std_logic := '0';
    signal stop_signal : std_logic := '0';
+   
+   signal mem: std_logic_vector( 7 downto 0 ):= "00110100";
 
 
 
@@ -81,13 +83,16 @@ BEGIN
    stim_proc: process
    begin		
       -- hold reset state for 100 ns.
-      wait for 100 ns;	
+	        wait for 100 ns;	
+
       start_clk <= '1';
-      
+	  wait for 10 ns;	
+
+
       -- insert stimulus here
       sda <= '0';
-	wait for 200 ns;
-	sda<='1';
+	wait for 150 ns;
+	sda <='1';
 	wait for 200 ns;
 		
 
