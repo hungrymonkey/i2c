@@ -54,12 +54,12 @@ BEGIN
 					curr_state <= ack_st0;
 					enclk <= '1';
 				WHEN ack_st0 =>
-					IF( sda = '0' ) THEN
+					IF( sda = '0' ) THEN -- here if sda low means that the slave is acknowledging
 						curr_state <= ack_st0;
 						enclk <= '0';
 					ELSE
 						enclk <= '1';
-						curr_state <= reg0;
+						curr_state <= reg0; -- what is all this bit count and moving from reg0 to reg N 
 						bit_cnt <= "111";
 					END IF;
 				WHEN regN =>
@@ -75,7 +75,7 @@ BEGIN
 					curr_state <= ack_st1;
 					enclk <= '1';
 				WHEN ack_st1 => 
-					IF( sda = '0' ) THEN
+					IF( sda = '0' ) THEN -- again same thing with this 
 						curr_state <= ack_st1;
 						enclk <= '0';
 					ELSE
@@ -119,7 +119,7 @@ BEGIN
 	PROCESS(curr_state) BEGIN
 		CASE curr_state IS
 			WHEN start_st => 
-				bit_cnt <= "111";
+				bit_cnt <= "111"; -- DOnt see whta number and bit cnt is for 
 				number <= "000";
 				addr <= '0';
 				ack0 <= '0';

@@ -33,8 +33,8 @@ architecture lab3 of master is
 			number   : out UNSIGNED (2 downto 0)
         );
 	END COMPONENT FSM;
-	SIGNAL clk: STD_LOGIC := 0;
-	SIGNAL s_clk: STD_LOGIC := 0;
+	SIGNAL clk: STD_LOGIC ;
+	SIGNAL s_clk: STD_LOGIC ;
 	SIGNAL sdaValid: STD_LOGIC;
 	SIGNAL stop_signal: STD_LOGIC;
 	SIGNAL start_signal: STD_LOGIC;
@@ -76,7 +76,7 @@ begin
 							);
 							
 	PROCESS( clk ) BEGIN
-		wait for 10000 ns;
+		--wait for 10000 ns;
 		CLK <= NOT clk;
 		s_clk <= CLK AND enclk;
 	END PROCESS;
