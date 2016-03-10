@@ -40,7 +40,7 @@ ARCHITECTURE arch OF I2C_slave IS
 	
 	SIGNAL scl_ena       : STD_LOGIC := '0';               --enables internal scl to output
 
-	SIGNAL data_in : STD_LOGIC_VECTOR( 7 DOWNTO 0 );
+	SIGNAL data_in : STD_LOGIC_VECTOR( 7 DOWNTO 0 ) := "00000000";
 	SIGNAL data_clk, scl_clk     : STD_LOGIC;                      --data clock for sda
     SIGNAL data_clk_prev : STD_LOGIC;                      --data clock during previous system clock
 	SIGNAL rw_signal : STD_LOGIC;
@@ -51,7 +51,7 @@ ARCHITECTURE arch OF I2C_slave IS
 	SIGNAL wr_flag, rd_flag : STD_LOGIC;
 	SIGNAL start_signal, stop_signal : STD_LOGIC := '0';
 BEGIN
-	PROCESS( clk ) 
+	PROCESS( clk, SCL ) 
 		VARIABLE count : INTEGER RANGE 0 TO divider;
 	BEGIN
 		IF( rising_edge( clk )) THEN 
@@ -79,13 +79,7 @@ BEGIN
 			END IF;
 		END IF;
 	END PROCESS;
-	PROCESS( SDA, CLK, SCL ) BEGIN
-			IF( rising_edge(SDA ) AND  SCL='1' AND NOT SCL'EVENT) THEN
-				stop_signal <= '1';
-			ELSIF( falling_edge(SDA ) AND  SCL='1'AND NOT SCL'EVENT) THEN
-				start_signal <= '1';
-			END IF;
-	END PROCESS;
+
 	PROCESS ( data_clk, RESET ) 
 	BEGIN
 		IF( RESET = '1' ) THEN
@@ -99,7 +93,10 @@ BEGIN
 				i <= 1 + i;
 			END IF;
 		ELSIF( falling_edge(data_clk)) THEN
-			IF ( st = reg_read ) THEN
+			IF (st = idle) THEN
+				
+			END IF;
+			IF ( st = reg_read OR st = dev_addr ) THEN
 				data_in( 7 - i ) <= SDA;
 			END IF;
 			IF ( st = rw ) THEN
@@ -113,15 +110,12 @@ BEGIN
 			WHEN idle => 
 				SDA <= 'Z';
 				
-				IF( start_signal = '1') THEN
-					timer <= 1;
+				IF( SDA = '0') THEN
 					st_n <= start;
-					start_signal <= '0';
 				ELSE
 					st_n <= idle;
-					timer <= delay;
-					start_signal <= '0';
 				END IF;
+				timer <= 1;
 			WHEN start => 
 				SDA <= 'Z';
 				timer <= 1;
@@ -129,7 +123,7 @@ BEGIN
 			WHEN dev_addr =>
 				SDA <= 'Z';
 
-				IF( slave_addr(6-i) = '1' ) THEN
+				IF( slave_addr(6-i) = data_in(7-i) ) THEN
 					st_n <= rw;
 				ELSE
 					st_n <= error;
@@ -177,12 +171,10 @@ BEGIN
 
 				timer <= 1;
 				
-				IF( stop_signal = '1' ) THEN
+				IF( SDA = '1' ) THEN
 					st_n <= stop;
-					stop_signal <= '0';
 				ELSE
 					st_n <= ack0;
-					stop_signal <= '0';
 				END IF;
 			WHEN stop =>
 
