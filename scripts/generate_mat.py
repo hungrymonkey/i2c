@@ -16,11 +16,10 @@ def main():
 def make_mat(outbuf):
    row = []
    for j in range( COL_SIZE ):
-      outbuf.write( str(random.randint(0,255) ))
-      for i in range( ROW_SIZE-1 ):
-          outbuf.write( "," +  str(random.randint(0,255)))
+      for i in range( ROW_SIZE ):
+          outbuf.write( str(random.randint(0,255))+"\n")
       #outbuf.write( ",".join( row ) )
-      outbuf.write( "\n" )
+
       
 
 
