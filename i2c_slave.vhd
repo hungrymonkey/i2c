@@ -35,7 +35,7 @@ ARCHITECTURE arch OF I2C_slave IS
 	SIGNAL timer	: NATURAL RANGE 0 TO delay;
 	SIGNAL i		: NATURAL RANGE 0 TO delay;
 
-	type state_t is ( idle, ack0, ack1, ack2, dev_addr, reg_addr, rw, start, stop, reg_write, reg_read, error);
+	type state_t is ( idle, ack0, ack1, ack2, dev_addr, reg_addr, rw, stop, reg_write, reg_read, error);
 	SIGNAL st, st_n : state_t;
 	
 	SIGNAL scl_ena       : STD_LOGIC := '0';               --enables internal scl to output
@@ -80,23 +80,23 @@ BEGIN
 		END IF;
 	END PROCESS;
 
-	PROCESS ( data_clk, RESET ) 
+	PROCESS ( scl_clk, RESET ) 
 	BEGIN
 		IF( RESET = '1' ) THEN
 			st <= idle;
 			i <= 0;
-		ELSIF( rising_edge( data_clk )) THEN
+		ELSIF( rising_edge( scl_clk )) THEN
 			IF( i = timer - 1) THEN
 				st <= st_n;
 				i <= 0;
 			ELSE
 				i <= 1 + i;
 			END IF;
-		ELSIF( falling_edge(data_clk)) THEN
+		ELSIF( falling_edge(scl_clk)) THEN
 			IF (st = idle) THEN
-				
+				rd_flag <= '0';
 			END IF;
-			IF ( st = reg_read OR st = dev_addr ) THEN
+			IF ( st = reg_read OR st = dev_addr  OR st = rw) THEN
 				data_in( 7 - i ) <= SDA;
 			END IF;
 			IF ( st = rw ) THEN
@@ -111,25 +111,24 @@ BEGIN
 				SDA <= 'Z';
 				
 				IF( SDA = '0') THEN
-					st_n <= start;
+					st_n <= dev_addr;
 				ELSE
 					st_n <= idle;
 				END IF;
 				timer <= 1;
-			WHEN start => 
-				SDA <= 'Z';
-				timer <= 1;
-				st_n <= dev_addr;
 			WHEN dev_addr =>
 				SDA <= 'Z';
 
 				IF( slave_addr(6-i) = data_in(7-i) ) THEN
 					st_n <= rw;
+					timer <= 7;
+
 				ELSE
 					st_n <= error;
+					timer <= 1;
+
 				END IF;
 
-				timer <= 7;
 				
 			WHEN rw =>
 				SDA <= 'Z';

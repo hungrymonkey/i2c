@@ -51,7 +51,7 @@ ARCHITECTURE BEV OF I2C_MASTER IS
 	SIGNAL data_in : STD_LOGIC_VECTOR( 7 DOWNTO 0 );
 	SIGNAL data_clk, scl_clk     : STD_LOGIC;                      --data clock for sda
     SIGNAL data_clk_prev : STD_LOGIC;                      --data clock during previous system clock
-	SIGNAL rw_signal : STD_LOGIC;
+	SIGNAL rw_signal : STD_LOGIC := '1';
 
 	SIGNAL sda_n : STD_LOGIC;
 	
@@ -130,7 +130,6 @@ BEGIN
 				END IF;
 			WHEN start => 
 				SCL <= 'Z';
-				SDA <= '0';
 				IF( data_clk  = '1' ) THEN
 					SDA <= 'Z';
 				ELSE
@@ -178,7 +177,7 @@ BEGIN
 			WHEN ack1 =>
 				SCL <= scl_clk;
 				timer <= 1;
-				IF( wr_flag = '1') THEN
+				IF( wr_flag = '0') THEN
 					st_n <= reg_write;
 				ELSE
 					st_n <= reg_read;
