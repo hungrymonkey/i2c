@@ -187,7 +187,7 @@ BEGIN
 				timer <= delay;
 		END CASE;
 	END PROCESS;
-	PROCESS( p_num ) BEGIN
+	PROCESS( clk ) BEGIN
 		CASE st IS
 			WHEN STOP =>
 				P <= p_num;
