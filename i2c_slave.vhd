@@ -50,6 +50,7 @@ ARCHITECTURE arch OF I2C_slave IS
 	SIGNAL aux_clk : STD_LOGIC := '0';
 	SIGNAL wr_flag, rd_flag : STD_LOGIC;
 	SIGNAL start_signal, stop_signal : STD_LOGIC := '0';
+	SIGNAL ack_signal: STD_LOGIC := '0';
 BEGIN
 	PROCESS( clk, SCL ) 
 		VARIABLE count : INTEGER RANGE 0 TO divider;
@@ -97,7 +98,14 @@ BEGIN
 				rd_flag <= '0';
 			END IF;
 			IF ( st = reg_read OR st = dev_addr  OR st = rw) THEN
-				data_in( 7 - i ) <= SDA;
+				IF( SDA = 'H') THEN
+					data_in( 7 - i ) <= '1';
+				ELSE
+					data_in( 7 - i ) <= '0';
+				END IF;
+			END IF;
+			IF( st = ack0 OR st = ack1 OR st = ack2) THEN
+				ack_signal <= SDA;
 			END IF;
 			IF ( st = rw ) THEN
 				rd_flag <= SDA;
@@ -118,7 +126,7 @@ BEGIN
 				timer <= 1;
 			WHEN dev_addr =>
 				SDA <= 'Z';
-
+				
 				IF( slave_addr(6-i) = data_in(7-i) ) THEN
 					st_n <= rw;
 					timer <= 7;
@@ -161,7 +169,7 @@ BEGIN
 
 				timer <= 8;
 				st_n <= ack2;
-				IF( data_out(7-i) = '1' ) THEN
+				IF( ack_signal = '1' ) THEN
 					SDA <= 'Z';
 				ELSE
 					SDA <= '0';
@@ -169,14 +177,14 @@ BEGIN
 			WHEN ack2 =>
 
 				timer <= 1;
-				
+				SDA <= 'Z';
 				IF( SDA = '1' ) THEN
 					st_n <= stop;
 				ELSE
 					st_n <= ack0;
 				END IF;
 			WHEN stop =>
-
+				SDA <= 'Z';
 				st_n <= stop;
 				timer <= delay;
 			WHEN error =>

@@ -107,10 +107,17 @@ BEGIN
 				rd_flag <= '1';
 			END IF;
 			IF ( st = reg_read ) THEN
-				data_in( 7 - i ) <= SDA;
-			END IF;
+				IF( SDA = 'H') THEN
+					data_in( 7 - i ) <= '1';
+				ELSE
+					data_in( 7 - i ) <= '0';
+				END IF;			END IF;
 			IF( st = ack0 OR st = ack1 OR st = ack2) THEN
-				ack_signal <= SDA;
+				IF( SDA = 'H') THEN
+					ack_signal <= '1';
+				ELSE
+					ack_signal <= '0';
+				END IF;
 			END IF;
 		END IF;
 	END PROCESS;
@@ -163,7 +170,12 @@ BEGIN
 					SCL <= '0';
 				END IF;
 				timer <= 1;
-				st_n <= reg_addr;
+				
+				IF( ack_signal = '1' ) THEN
+					st_n <= reg_addr;
+				ELSE
+					st_n <= ack0;
+				END IF;
 			WHEN reg_addr =>
 
 				IF( dev_addr_reg(7-i) = '1' ) THEN
@@ -177,10 +189,15 @@ BEGIN
 			WHEN ack1 =>
 				SCL <= scl_clk;
 				timer <= 1;
-				IF( wr_flag = '0') THEN
-					st_n <= reg_write;
+				
+				IF( ack_signal = '1' ) THEN
+					IF( wr_flag = '0') THEN
+						st_n <= reg_write;
+					ELSE
+						st_n <= reg_read;
+					END IF;
 				ELSE
-					st_n <= reg_read;
+					st_n <= ack1;
 				END IF;
 			WHEN reg_write =>
 				SCL <= scl_clk;
