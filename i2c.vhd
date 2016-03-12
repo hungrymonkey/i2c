@@ -213,11 +213,7 @@ BEGIN
 				timer <= 8;
 				st_n <= ack2;
 			WHEN ack2 =>
-				SCL <= scl_clk;
 				timer <= 1;
-				st_n <= stop;
-			WHEN stop =>
-				
 				IF( stop_sent = '0') THEN
 					SCL <= scl_clk;
 					IF( not scl_clk'EVENT AND scl_clk = 'Z') THEN
@@ -227,10 +223,14 @@ BEGIN
 						stop_sent <= '0';
 						SDA <= '0';
 					END IF;
-				ELSE 
-					SCL <= 'Z';
-					SDA <= 'Z';
 				END IF;
+				st_n <= stop;
+
+			WHEN stop =>
+				
+
+				SCL <= 'Z';
+				SDA <= 'Z';
 				st_n <= stop;
 				timer <= delay;
 			WHEN error =>

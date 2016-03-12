@@ -81,7 +81,7 @@ BEGIN
 		END IF;
 	END PROCESS;
 
-	PROCESS ( scl_clk, RESET ) 
+	PROCESS ( scl_clk, RESET, SDA ) 
 	BEGIN
 		IF( RESET = '1' ) THEN
 			st <= idle;
@@ -110,9 +110,15 @@ BEGIN
 			IF ( st = rw ) THEN
 				rd_flag <= SDA;
 			END IF;
+		ELSIF ( scl_clk'STABLE ) THEN
+			IF( st = ack2 ) THEN
+				IF( SDA = 'H' )THEN
+					stop_signal <= '1';					
+				END IF;
+			END IF;
 		END IF;
 	END PROCESS;
-	PROCESS ( st, scl_clk, data_clk  )
+	PROCESS ( stop_signal, st, scl_clk, data_clk )
 	BEGIN
 		CASE st IS
 			WHEN idle => 
@@ -178,7 +184,7 @@ BEGIN
 
 				timer <= 1;
 				SDA <= 'Z';
-				IF( SDA = '1' ) THEN
+				IF(  stop_signal = '1' ) THEN
 					st_n <= stop;
 				ELSE
 					st_n <= ack0;
