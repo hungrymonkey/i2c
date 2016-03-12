@@ -17,7 +17,7 @@ def make_mat(outbuf):
    row = []
    for j in range( COL_SIZE ):
       for i in range( ROW_SIZE ):
-          outbuf.write( str(random.randint(0,255))+"\n")
+          outbuf.write( str(random.randint(0,15))+"\n")
       #outbuf.write( ",".join( row ) )
 
       

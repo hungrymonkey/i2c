@@ -27,10 +27,12 @@ def main(args):
    p = int(args[1])
    out = multiply( matrix1, matrix2, p )
    print out
-   out.tofile( of, ",")
+   for a in out:	
+     a.tofile( of, ",")
+     of.write("\n")
 
 def multiply( m1, m2, p ):
-   return np.dot(m1 , m2[:,:p])
+   return np.dot(m1 , m2[:p,:].T)
 
 
 
