@@ -8,6 +8,7 @@ ENTITY I2C_MASTER IS
 	PORT(
 		CLK 	: IN STD_LOGIC;
 		RESET	: IN STD_LOGIC;
+		P		: IN  STD_LOGIC_VECTOR( 15 DOWNTO 0 );
 		SDA 	: INOUT STD_LOGIC;
 		SCL 	: INOUT STD_LOGIC
 	);
@@ -20,6 +21,7 @@ ARCHITECTURE BEV OF I2C_MASTER IS
 	CONSTANT dev_addr_write: STD_LOGIC_VECTOR( 7 DOWNTO 0) := "10100000";
 	CONSTANT dev_addr_reg: STD_LOGIC_VECTOR( 7 DOWNTO 0) := "10100001";
 
+	SIGNAL p_num : STD_LOGIC_VECTOR( 15 DOWNTO 0 ) := X"0000";
 	
 	
 	COMPONENT shiftReg 
@@ -43,7 +45,7 @@ ARCHITECTURE BEV OF I2C_MASTER IS
 	SIGNAL timer	: NATURAL RANGE 0 TO delay;
 	SIGNAL i		: NATURAL RANGE 0 TO delay;
 
-	type state_t is ( idle, ack0, ack1, ack2, dev_addr, reg_addr, rw, start, stop, reg_write, reg_read, error);
+	type state_t is ( idle, ack0, ack1, ack2, dev_addr, p0, p1, rw, start, stop, error);
 	SIGNAL st, st_n : state_t;
 	
 	SIGNAL scl_ena       : STD_LOGIC := '0';               --enables internal scl to output
@@ -106,7 +108,7 @@ BEGIN
 				wr_flag <= '0';
 				rd_flag <= '1';
 			END IF;
-			IF ( st = reg_read ) THEN
+			IF ( st = p0 AND st = p1 ) THEN
 				IF( SDA = 'H') THEN
 					data_in( 7 - i ) <= '1';
 				ELSE
@@ -127,7 +129,7 @@ BEGIN
 			WHEN idle => 
 				SCL <= 'Z';
 				SDA <= 'Z';
-				
+				p_num <= P;
 				IF( wr_flag = '1' OR rd_flag = '1') THEN
 					timer <= 1;
 					st_n <= start;
@@ -172,13 +174,14 @@ BEGIN
 				timer <= 1;
 				
 				IF( ack_signal = '1' ) THEN
-					st_n <= reg_addr;
+					st_n <= p0;
 				ELSE
 					st_n <= ack0;
 				END IF;
-			WHEN reg_addr =>
+				SDA <= 'Z';
+			WHEN p0 =>
 
-				IF( dev_addr_reg(7-i) = '1' ) THEN
+				IF( p_num(15-i) = '1' ) THEN
 					SDA <= 'Z';
 				ELSE
 					SDA <= '0';
@@ -191,27 +194,21 @@ BEGIN
 				timer <= 1;
 				
 				IF( ack_signal = '1' ) THEN
-					IF( wr_flag = '0') THEN
-						st_n <= reg_write;
-					ELSE
-						st_n <= reg_read;
-					END IF;
+					st_n <= p1;
 				ELSE
 					st_n <= ack1;
 				END IF;
-			WHEN reg_write =>
+				SDA <= 'Z';
+
+			WHEN p1 =>
 				SCL <= scl_clk;
 				timer <= 8;
 				st_n <= ack2;
-				IF( dev_addr_write(7-i) = '1' ) THEN
+				IF( p_num(7-i) = '1' ) THEN
 					SDA <= 'Z';
 				ELSE
 					SDA <= '0';
 				END IF;
-			WHEN reg_read =>
-				SCL <= scl_clk;
-				timer <= 8;
-				st_n <= ack2;
 			WHEN ack2 =>
 				timer <= 1;
 				IF( stop_sent = '0') THEN

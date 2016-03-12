@@ -13,7 +13,8 @@ ENTITY I2C_SLAVE IS
 		RESET	: IN STD_LOGIC;
 --		RAM		:  inout ram_type;
 		SDA 	: INOUT STD_LOGIC;
-		SCL 	: IN STD_LOGIC
+		SCL 	: IN STD_LOGIC;
+		P		: OUT STD_LOGIC_VECTOR( 15 DOWNTO 0 )
 	);
 END ENTITY;
 
@@ -35,7 +36,7 @@ ARCHITECTURE arch OF I2C_slave IS
 	SIGNAL timer	: NATURAL RANGE 0 TO delay;
 	SIGNAL i		: NATURAL RANGE 0 TO delay;
 
-	type state_t is ( idle, ack0, ack1, ack2, dev_addr, reg_addr, rw, stop, reg_write, reg_read, error);
+	type state_t is ( idle, ack0, ack1, ack2, dev_addr, p0, p1, rw, stop, error);
 	SIGNAL st, st_n : state_t;
 	
 	SIGNAL scl_ena       : STD_LOGIC := '0';               --enables internal scl to output
@@ -51,6 +52,7 @@ ARCHITECTURE arch OF I2C_slave IS
 	SIGNAL wr_flag, rd_flag : STD_LOGIC;
 	SIGNAL start_signal, stop_signal : STD_LOGIC := '0';
 	SIGNAL ack_signal: STD_LOGIC := '0';
+	SIGNAL p_num : STD_LOGIC_VECTOR( 15 DOWNTO 0 ) := X"0000";
 BEGIN
 	PROCESS( clk, SCL ) 
 		VARIABLE count : INTEGER RANGE 0 TO divider;
@@ -97,7 +99,7 @@ BEGIN
 			IF (st = idle) THEN
 				rd_flag <= '0';
 			END IF;
-			IF ( st = reg_read OR st = dev_addr  OR st = rw) THEN
+			IF ( st = p0 OR st = p1  OR st = rw) THEN
 				IF( SDA = 'H') THEN
 					data_in( 7 - i ) <= '1';
 				ELSE
@@ -111,10 +113,8 @@ BEGIN
 				rd_flag <= SDA;
 			END IF;
 		ELSIF ( scl_clk'STABLE ) THEN
-			IF( st = ack2 ) THEN
-				IF( SDA = 'H' )THEN
-					stop_signal <= '1';					
-				END IF;
+			IF( SDA = 'H' )THEN
+				stop_signal <= '1';					
 			END IF;
 		END IF;
 	END PROCESS;
@@ -123,7 +123,7 @@ BEGIN
 		CASE st IS
 			WHEN idle => 
 				SDA <= 'Z';
-				
+				p_num <= X"0000";
 				IF( SDA = '0') THEN
 					st_n <= dev_addr;
 				ELSE
@@ -151,37 +151,26 @@ BEGIN
 			WHEN ack0 =>
 				SDA <= 'Z';
 				timer <= 1;
-				st_n <= reg_addr;
-			WHEN reg_addr =>
+				st_n <= p0;
+			WHEN p0 =>
+				p_num( 15 - i ) <= data_in(7-i);
 				SDA <= 'Z';
 				st_n <= ack1;
 				timer <= 8;
-				
 			WHEN ack1 =>
-
 				timer <= 1;
-				IF( rd_flag = '1') THEN
-					st_n <= reg_read;
+				IF(  stop_signal = '1' ) THEN
+					st_n <= p1;
 				ELSE
-					st_n <= reg_write;
+					st_n <= ack1;
 				END IF;
 				SDA <= 'Z';
-			WHEN reg_write =>
-
+			WHEN p1 =>
+				p_num( 7 - i ) <= data_in(7-i);
 				timer <= 8;
 				st_n <= ack2;
 				SDA <= 'Z';
-			WHEN reg_read =>
-
-				timer <= 8;
-				st_n <= ack2;
-				IF( ack_signal = '1' ) THEN
-					SDA <= 'Z';
-				ELSE
-					SDA <= '0';
-				END IF;
 			WHEN ack2 =>
-
 				timer <= 1;
 				SDA <= 'Z';
 				IF(  stop_signal = '1' ) THEN
@@ -198,5 +187,12 @@ BEGIN
 				timer <= delay;
 		END CASE;
 	END PROCESS;
-	
+	PROCESS( p_num ) BEGIN
+		CASE st IS
+			WHEN STOP =>
+				P <= p_num;
+			WHEN OTHERS =>
+				P <= X"0000";
+		END CASE;
+	END PROCESS; 
 END ARCHITECTURE arch;
