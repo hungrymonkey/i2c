@@ -16,7 +16,9 @@ Entity LOADER IS
 		WEN		: Out STD_LOGIC;
 		EN   	: Out STD_LOGIC;
 		RCLK 	: Out STD_LOGIC;
-		DATA	: IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+		WCLK	: Out STD_LOGIC;
+		DATA_R	: IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+		DATA_W	: Oout STD_LOGIC_VECTOR(7 DOWNTO 0);
 
 
 
@@ -42,23 +44,23 @@ END Entity;
 ARCHITECTURE Load of LOADER is
 
 Constant Matrix1_start := 0; -- change
-Constant Matrix2_start := 15; -- change
-Constant Size 	:= 3; -- should be changed 
-
+Constant Matrix2_start := 3; -- change
+Constant SIZE 	:= 2; -- but array of size +1  should be changed 
+Constant P := 2;
 
 Type LOAD_type is (idle, waitM1, waitM2, loadM1, loadM2, Done);
 
-Type OUTPUT_type is ( idle, setOut, incre);
+Type OUTPUT_type is ( init, idle , setOut, incre);
 
 
 Type registers is array (0 to 2) of STD_LOGIC_VECTOR(7 DOWNTO 0);
 
-
+Signal DONE : STD_LOGIC := '0';
 Signal cLoad, nLoad : LOAD_type := idle;
-Signal cOut , nOut : OUTPUT_type := idle;
+Signal cOut , nOut : OUTPUT_type := init;
 Signal REGS : registers;
 
-
+Signal 
 
 
 --  need process to load up all the variables, two different sets of 960
@@ -75,40 +77,144 @@ BEGIN
 END PROCESS:
 
 LOAD: PROCESS (cLoad, LoadM1, LoadM2 )
-	VARIABLE m1ADD : integer := ;
-	VARIABLE m2ADD : integer := 
-	VARIABLE coM1 : natural range 0 to 2 :=0;
-	VARIABLE coM2 : natural range 0 to 2 :=0;
-	VARIABLE BOTH : natural range 0 to 2 :=0;
+	VARIABLE m1ADD : integer := Matrix1_start;
+	VARIABLE m2ADD : integer := Matrix2_start;
+	VARIABLE coM1 : natural range 0 to SIZE :=0;
+	VARIABLE coM2 : natural range 0 to SIZE :=0;
+	VARIABLE BOTH : natural range 0 to SIZE :=0;
 BEGIN
 	CASE cLoad IS
 		WHEN idle =>
-
-			if (LoadM1 = 1) then
+			Loaded <= '0';
+			if (LoadM1 = '1') then
 				coM1 := 0;
 				nLoad <= loadM1;
-			elsif (LoadM2 = 1) then
+			elsif (LoadM2 = '1') then
 				coM2 := 0;
 				nLoad <= loadM2;
 			else
 				nLoad <= idle;
 			end if;
 
-
 		WHEN loadM1 =>
-			if (coM1 = 2) then-- line to change with different sized arrays
-				
+			Loaded <= '0';
+			if (coM1 = SIZE) then-- line to change with different sized arrays
+				m1ADD := m1ADD+size;
+				coM1 := 0;
+				BOTH := BOTH + 1;
+				EN <= '0';
+				nLoad <= waitM1;
 			else
+				Addr_R	<= m1ADD + coM1; -- make sureit is an int
+				EN <= '1';
+				RCLK <= '1';
+				REGS(coM1) <= DATA_R;
+				RCLK <= '0';
+				coM1 :=  coM1 + 1;
+				nLoad <= loadM1;
+			end if;
 		WHEN loadM2 =>
+			Loaded <= '0';
+			if (coM2 = SIZE) then-- line to change with different sized arrays
+				m2ADD := m2ADD+1;
+				coM2 := 0;
+				BOTH := BOTH + 1;
+				EN <= '0';
+				nLoad <= waitM2;
+			else
+				Addr_R	<= m2ADD + (coM2 * SIZE); -- make sureit is an int
+				EN <= '1';
+				RCLK <= '1';
+				REGS(coM2) <= DATA_R;
+				RCLK <= '0';
+				coM2 :=  coM2 + 1;
+				nLoad <= loadM2;
+			end if;
 
 		WHEN waitM1 =>
-
+			Loaded <= '0';
+			if ( BOTH = 2 ) then -- we are done
+				nLoad <= Done;
+			elsif (LoadM2 = '1') then  -- go to that load
+				nLoad <= loadM2;
+			else
+				nLoad <= waitM1;
+			end if;
 		WHEN waitM2 =>
+			Loaded <= '0';
+			if ( BOTH = 2 ) then -- we are done
+				nLoad <= Done;
+			elsif (LoadM1 = '1') then -- go to that load
+				nLoad <= loadM1;
+			else
+				nLoad <= waitM2;
+			end if;
 
 		WHEN Done =>
-
-
-
+			Loaded <= '1';
+			BOTH := 0;
+			DONE := '1';
+			if ( rising_edge(LoadM1)) then
+				nLoad <= loadM1;
+			elsif ( rising_edge(LoadM2)) then
+				nLoad <= loadM2;
+			else 
+				nLoad <= Done;
+			end if;
 	END CASE;
 END LOAD;
 
+OUTPUT : PROCESS (cOut, Next, DONE )
+	VARIABLE index : natural range 0 to SIZE :=0;
+BEGIN -- setOut , incre, idle 
+	CASE cOUT IS
+		WHEN init => 
+			if ( rising_edge(DONE)) THEN
+				nOut <= idle;
+				index:=0;
+			else
+				nOut <= init;
+			END IF;
+		WHEN idle =>
+			if ( Next = '1' ) then
+				nOut <= incre;
+			else
+				nOut <= idle; 
+			end if;
+		WHEN incre =>
+			outM1 <= REGS(index);
+			outM2 <= REGS(index);
+			if ( index = SIZE)
+				nOut <= init; 
+				index := 0; 
+			else
+				index := index + 1;
+				nOut <= idle;
+			end if;
+
+	END CASE;
+END PROCESS;
+
+
+
+WRITEOUT : PROCESS(Write)
+	VARIABLE WRITE_ADD : INTEGER := 5760000 ; -- first free memory location
+	
+BEGIN
+
+	DATA_W <= InM3(15 DOWNTO 8);
+	Addr_W <= WRITE_ADD;
+	WEN	<= '1';
+	WCLK <= '1';	
+	
+	WRITE_ADD := WRITE_ADD + 1;
+	WCLK <= '0';
+	
+	Addr_W <= WRITE_ADD;
+	DATA_W <= InM3(7 DOWNTO 0);
+	WCLK <= '1';
+
+	WRITE_ADD< WRITE_ADD +1;
+	WCLK <= '0' ;
+	WEN <= '0';
+END PROCESS;
