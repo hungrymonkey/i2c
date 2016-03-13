@@ -45,14 +45,16 @@ ARCHITECTURE r of BRAM_MAT2 is
 	SIGNAL ram_block : ram_type := init_my_ram( "./mat1.dat", "./mat2.dat");
 BEGIN
 	PROCESS( CLK_A ) BEGIN
-
-		D_A <= ram_block( ADDR_R_A);
+		IF( rising_edge( CLK_A ) ) THEN
+			D_A <= ram_block( ADDR_R_A);
+		END IF;
 	END PROCESS;
 	
 	PROCESS(CLK_B ) BEGIN
+		IF( rising_edge( CLK_B ) ) THEN
 
-		D_B <= ram_block( ADDR_R_B);
-
+			D_B <= ram_block( ADDR_R_B);
+		END IF;
 	END PROCESS;
 END r;
 
