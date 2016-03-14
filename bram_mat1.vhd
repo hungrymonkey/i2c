@@ -4,6 +4,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use work.ram_mat.ALL;
 use std.textio.all;
 ENTITY BRAM_MAT1 IS
+	GENERIC(size : INTEGER := 1920);
 
 	PORT(
 		
@@ -30,7 +31,7 @@ ARCHITECTURE r of BRAM_MAT1 is
 		begin
 		   file_open(f1, file1, read_mode);
 
-		   for i in 0 to 3686399  loop
+		   for i in 0 to size * size - 1  loop
 			  readline(f1, inline);
 			  read( inline, dataread1 );
 			  m(i) := STD_LOGIC_VECTOR(to_unsigned(INTEGER(dataread1),8));
